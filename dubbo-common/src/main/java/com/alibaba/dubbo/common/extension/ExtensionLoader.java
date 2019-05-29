@@ -173,6 +173,7 @@ public class ExtensionLoader<T> {
     }
 
     /**
+     * 获取扩展点自动激活实例
      * Get activate extensions.
      *
      * @param url    url
@@ -180,26 +181,44 @@ public class ExtensionLoader<T> {
      * @param group  group
      * @return extension list which are activated
      * @see com.alibaba.dubbo.common.extension.Activate
+     *
+     * 这个方法的value参数，直接通过扩展点名获取扩展点实现（不需要有@Activate注解）。而group参数，针对的是有@Activate注解的扩展点实现，
+     * 首先扩展点实现的@Activate注解的group属性需要匹配，其次@Activate的value属性需要匹配传入的url，
+     * 也就时@Activate的value需要在url中至少找到一个匹配的key。group和value的匹配相互独立，取并集。
+     *
      */
     public List<T> getActivateExtension(URL url, String[] values, String group) {
         List<T> exts = new ArrayList<T>();
         List<String> names = values == null ? new ArrayList<String>(0) : Arrays.asList(values);
+
+        // 包装好的数据中不包含"-default"
         if (!names.contains(Constants.REMOVE_VALUE_PREFIX + Constants.DEFAULT_KEY)) {
+            // 获取这个类型的数据的所有扩展信息
             getExtensionClasses();
             for (Map.Entry<String, Activate> entry : cachedActivates.entrySet()) {
-                String name = entry.getKey();
-                Activate activate = entry.getValue();
+                String name = entry.getKey();          // 获取扩展的名称
+                Activate activate = entry.getValue();  // 获取扩展的注解
+
+                // group需要匹配，比较
+                // group==null true
+                // group!=null activate.group()==null false
+                // group in activate.group() true
+                // group not in activate.group() false
                 if (isMatchGroup(group, activate.group())) {
+                    // group 校验通过了，从缓存中获取此name对应的实例
                     T ext = getExtension(name);
-                    if (!names.contains(name)
+                    if (!names.contains(name)             // 排查名字匹配的，下面逻辑会添加这些
                             && !names.contains(Constants.REMOVE_VALUE_PREFIX + name)
-                            && isActive(activate, url)) {
+                            && isActive(activate, url)) { // url里面需要匹配activate.value中至少一个key
                         exts.add(ext);
                     }
                 }
             }
+            // 按照Activate的方式进行排序，注意order
             Collections.sort(exts, ActivateComparator.COMPARATOR);
         }
+
+        // 下面的只要name匹配即可
         List<T> usrs = new ArrayList<T>();
         for (int i = 0; i < names.size(); i++) {
             String name = names.get(i);
