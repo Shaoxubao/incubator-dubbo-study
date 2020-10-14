@@ -16,6 +16,7 @@
  */
 package com.alibaba.dubbo.demo.provider;
 
+import com.alibaba.dubbo.container.Main;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 public class Provider {
@@ -28,6 +29,9 @@ public class Provider {
         context.start();
 
         System.in.read(); // press any key to exit
+
+        // 或者如下方式启动服务
+//        Main.main(args);
     }
 
 }
