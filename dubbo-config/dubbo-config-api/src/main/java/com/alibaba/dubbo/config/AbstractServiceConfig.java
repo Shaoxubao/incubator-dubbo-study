@@ -167,7 +167,7 @@ public abstract class AbstractServiceConfig extends AbstractInterfaceConfig {
     }
 
     public ProtocolConfig getProtocol() {
-        return protocols == null || protocols.size() == 0 ? null : protocols.get(0);
+        return protocols == null || protocols.isEmpty() ? null : protocols.get(0);
     }
 
     public void setProtocol(ProtocolConfig protocol) {
@@ -198,11 +198,13 @@ public abstract class AbstractServiceConfig extends AbstractInterfaceConfig {
         this.executes = executes;
     }
 
+    @Override
     @Parameter(key = Constants.SERVICE_FILTER_KEY, append = true)
     public String getFilter() {
         return super.getFilter();
     }
 
+    @Override
     @Parameter(key = Constants.EXPORTER_LISTENER_KEY, append = true)
     public String getListener() {
         return super.getListener();

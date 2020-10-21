@@ -35,6 +35,7 @@ public class HelpTelnetHandler implements TelnetHandler {
 
     private final ExtensionLoader<TelnetHandler> extensionLoader = ExtensionLoader.getExtensionLoader(TelnetHandler.class);
 
+    @Override
     public String telnet(Channel channel, String message) {
         if (message.length() > 0) {
             if (!extensionLoader.hasExtension(message)) {
@@ -53,7 +54,7 @@ public class HelpTelnetHandler implements TelnetHandler {
         } else {
             List<List<String>> table = new ArrayList<List<String>>();
             List<TelnetHandler> handlers = extensionLoader.getActivateExtension(channel.getUrl(), "telnet");
-            if (handlers != null && handlers.size() > 0) {
+            if (handlers != null && !handlers.isEmpty()) {
                 for (TelnetHandler handler : handlers) {
                     Help help = handler.getClass().getAnnotation(Help.class);
                     List<String> row = new ArrayList<String>();

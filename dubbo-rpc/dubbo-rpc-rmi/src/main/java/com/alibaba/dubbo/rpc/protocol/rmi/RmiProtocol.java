@@ -16,9 +16,12 @@
  */
 package com.alibaba.dubbo.rpc.protocol.rmi;
 
+import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
+import com.alibaba.dubbo.common.Version;
 import com.alibaba.dubbo.rpc.RpcException;
 import com.alibaba.dubbo.rpc.protocol.AbstractProxyProtocol;
+
 import org.aopalliance.intercept.MethodInvocation;
 import org.springframework.remoting.RemoteAccessException;
 import org.springframework.remoting.rmi.RmiProxyFactoryBean;
@@ -41,10 +44,12 @@ public class RmiProtocol extends AbstractProxyProtocol {
         super(RemoteAccessException.class, RemoteException.class);
     }
 
+    @Override
     public int getDefaultPort() {
         return DEFAULT_PORT;
     }
 
+    @Override
     protected <T> Runnable doExport(final T impl, Class<T> type, URL url) throws RpcException {
         final RmiServiceExporter rmiServiceExporter = new RmiServiceExporter();
         rmiServiceExporter.setRegistryPort(url.getPort());
@@ -57,6 +62,7 @@ public class RmiProtocol extends AbstractProxyProtocol {
             throw new RpcException(e.getMessage(), e);
         }
         return new Runnable() {
+            @Override
             public void run() {
                 try {
                     rmiServiceExporter.destroy();
@@ -67,15 +73,20 @@ public class RmiProtocol extends AbstractProxyProtocol {
         };
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     protected <T> T doRefer(final Class<T> serviceType, final URL url) throws RpcException {
         final RmiProxyFactoryBean rmiProxyFactoryBean = new RmiProxyFactoryBean();
         // RMI needs extra parameter since it uses customized remote invocation object
-        rmiProxyFactoryBean.setRemoteInvocationFactory(new RemoteInvocationFactory() {
-            public RemoteInvocation createRemoteInvocation(MethodInvocation methodInvocation) {
-                return new RmiRemoteInvocation(methodInvocation);
-            }
-        });
+        if (url.getParameter(Constants.DUBBO_VERSION_KEY, Version.getVersion()).equals(Version.getVersion())) {
+            // Check dubbo version on provider, this feature only support
+            rmiProxyFactoryBean.setRemoteInvocationFactory(new RemoteInvocationFactory() {
+                @Override
+                public RemoteInvocation createRemoteInvocation(MethodInvocation methodInvocation) {
+                    return new RmiRemoteInvocation(methodInvocation);
+                }
+            });
+        }
         rmiProxyFactoryBean.setServiceUrl(url.toIdentityString());
         rmiProxyFactoryBean.setServiceInterface(serviceType);
         rmiProxyFactoryBean.setCacheStub(true);
@@ -85,6 +96,7 @@ public class RmiProtocol extends AbstractProxyProtocol {
         return (T) rmiProxyFactoryBean.getObject();
     }
 
+    @Override
     protected int getErrorCode(Throwable e) {
         if (e instanceof RemoteAccessException) {
             e = e.getCause();

@@ -53,6 +53,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -77,8 +79,8 @@ public class JavaSerializer extends AbstractSerializer {
         if (_writeReplace != null)
             _writeReplace.setAccessible(true);
 
-        ArrayList primitiveFields = new ArrayList();
-        ArrayList compoundFields = new ArrayList();
+        List primitiveFields = new ArrayList();
+        List compoundFields = new ArrayList();
 
         for (; cl != null; cl = cl.getSuperclass()) {
             Field[] fields = cl.getDeclaredFields();
@@ -101,9 +103,10 @@ public class JavaSerializer extends AbstractSerializer {
             }
         }
 
-        ArrayList fields = new ArrayList();
+        List fields = new ArrayList();
         fields.addAll(primitiveFields);
         fields.addAll(compoundFields);
+        Collections.reverse(fields);
 
         _fields = new Field[fields.size()];
         fields.toArray(_fields);
@@ -198,6 +201,7 @@ public class JavaSerializer extends AbstractSerializer {
         return null;
     }
 
+    @Override
     public void writeObject(Object obj, AbstractHessianOutput out)
             throws IOException {
         if (out.addRef(obj)) {
@@ -305,6 +309,7 @@ public class JavaSerializer extends AbstractSerializer {
     static class BooleanFieldSerializer extends FieldSerializer {
         static final FieldSerializer SER = new BooleanFieldSerializer();
 
+        @Override
         void serialize(AbstractHessianOutput out, Object obj, Field field)
                 throws IOException {
             boolean value = false;
@@ -322,6 +327,7 @@ public class JavaSerializer extends AbstractSerializer {
     static class IntFieldSerializer extends FieldSerializer {
         static final FieldSerializer SER = new IntFieldSerializer();
 
+        @Override
         void serialize(AbstractHessianOutput out, Object obj, Field field)
                 throws IOException {
             int value = 0;
@@ -339,6 +345,7 @@ public class JavaSerializer extends AbstractSerializer {
     static class LongFieldSerializer extends FieldSerializer {
         static final FieldSerializer SER = new LongFieldSerializer();
 
+        @Override
         void serialize(AbstractHessianOutput out, Object obj, Field field)
                 throws IOException {
             long value = 0;
@@ -356,6 +363,7 @@ public class JavaSerializer extends AbstractSerializer {
     static class DoubleFieldSerializer extends FieldSerializer {
         static final FieldSerializer SER = new DoubleFieldSerializer();
 
+        @Override
         void serialize(AbstractHessianOutput out, Object obj, Field field)
                 throws IOException {
             double value = 0;
@@ -373,6 +381,7 @@ public class JavaSerializer extends AbstractSerializer {
     static class StringFieldSerializer extends FieldSerializer {
         static final FieldSerializer SER = new StringFieldSerializer();
 
+        @Override
         void serialize(AbstractHessianOutput out, Object obj, Field field)
                 throws IOException {
             String value = null;
@@ -390,6 +399,7 @@ public class JavaSerializer extends AbstractSerializer {
     static class DateFieldSerializer extends FieldSerializer {
         static final FieldSerializer SER = new DateFieldSerializer();
 
+        @Override
         void serialize(AbstractHessianOutput out, Object obj, Field field)
                 throws IOException {
             java.util.Date value = null;

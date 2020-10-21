@@ -19,6 +19,7 @@ package com.alibaba.dubbo.rpc.protocol.thrift;
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
+import com.alibaba.dubbo.common.utils.ConfigUtils;
 import com.alibaba.dubbo.remoting.Channel;
 import com.alibaba.dubbo.remoting.RemotingException;
 import com.alibaba.dubbo.remoting.Transporter;
@@ -101,10 +102,12 @@ public class ThriftProtocol extends AbstractProtocol {
 
     };
 
+    @Override
     public int getDefaultPort() {
         return DEFAULT_PORT;
     }
 
+    @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
 
         // can use thrift codec only
@@ -124,6 +127,7 @@ public class ThriftProtocol extends AbstractProtocol {
         return exporter;
     }
 
+    @Override
     public void destroy() {
 
         super.destroy();
@@ -137,7 +141,7 @@ public class ThriftProtocol extends AbstractProtocol {
                     if (logger.isInfoEnabled()) {
                         logger.info("Close dubbo server: " + server.getLocalAddress());
                     }
-                    server.close(getServerShutdownTimeout());
+                    server.close(ConfigUtils.getServerShutdownTimeout());
                 } catch (Throwable t) {
                     logger.warn(t.getMessage(), t);
                 }
@@ -147,6 +151,7 @@ public class ThriftProtocol extends AbstractProtocol {
 
     } // ~ end of method destroy
 
+    @Override
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
 
         ThriftInvoker<T> invoker = new ThriftInvoker<T>(type, url, getClients(url), invokers);

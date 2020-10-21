@@ -41,13 +41,14 @@ public class StatusTelnetHandler implements TelnetHandler {
 
     private final ExtensionLoader<StatusChecker> extensionLoader = ExtensionLoader.getExtensionLoader(StatusChecker.class);
 
+    @Override
     public String telnet(Channel channel, String message) {
         if (message.equals("-l")) {
             List<StatusChecker> checkers = extensionLoader.getActivateExtension(channel.getUrl(), "status");
             String[] header = new String[]{"resource", "status", "message"};
             List<List<String>> table = new ArrayList<List<String>>();
             Map<String, Status> statuses = new HashMap<String, Status>();
-            if (checkers != null && checkers.size() > 0) {
+            if (checkers != null && !checkers.isEmpty()) {
                 for (StatusChecker checker : checkers) {
                     String name = extensionLoader.getExtensionName(checker);
                     Status stat;

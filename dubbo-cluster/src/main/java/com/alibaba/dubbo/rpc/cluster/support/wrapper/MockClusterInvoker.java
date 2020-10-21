@@ -45,22 +45,27 @@ public class MockClusterInvoker<T> implements Invoker<T> {
         this.invoker = invoker;
     }
 
+    @Override
     public URL getUrl() {
         return directory.getUrl();
     }
 
+    @Override
     public boolean isAvailable() {
         return directory.isAvailable();
     }
 
+    @Override
     public void destroy() {
         this.invoker.destroy();
     }
 
+    @Override
     public Class<T> getInterface() {
         return directory.getInterface();
     }
 
+    @Override
     public Result invoke(Invocation invocation) throws RpcException {
         Result result = null;
 
@@ -83,7 +88,7 @@ public class MockClusterInvoker<T> implements Invoker<T> {
                     throw e;
                 } else {
                     if (logger.isWarnEnabled()) {
-                        logger.info("fail-mock: " + invocation.getMethodName() + " fail-mock enabled , url : " + directory.getUrl(), e);
+                        logger.warn("fail-mock: " + invocation.getMethodName() + " fail-mock enabled , url : " + directory.getUrl(), e);
                     }
                     result = doMockInvoke(invocation, e);
                 }
@@ -98,7 +103,7 @@ public class MockClusterInvoker<T> implements Invoker<T> {
         Invoker<T> minvoker;
 
         List<Invoker<T>> mockInvokers = selectMockInvoker(invocation);
-        if (mockInvokers == null || mockInvokers.size() == 0) {
+        if (mockInvokers == null || mockInvokers.isEmpty()) {
             minvoker = (Invoker<T>) new MockInvoker(directory.getUrl());
         } else {
             minvoker = mockInvokers.get(0);

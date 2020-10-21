@@ -35,8 +35,9 @@ public abstract class AbstractLoadBalance implements LoadBalance {
         return ww < 1 ? 1 : (ww > weight ? weight : ww);
     }
 
+    @Override
     public <T> Invoker<T> select(List<Invoker<T>> invokers, URL url, Invocation invocation) {
-        if (invokers == null || invokers.size() == 0)
+        if (invokers == null || invokers.isEmpty())
             return null;
         if (invokers.size() == 1)
             return invokers.get(0);

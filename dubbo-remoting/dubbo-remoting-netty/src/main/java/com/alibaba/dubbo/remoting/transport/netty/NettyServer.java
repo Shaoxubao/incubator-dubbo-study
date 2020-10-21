@@ -75,6 +75,7 @@ public class NettyServer extends AbstractServer implements Server {
         // https://issues.jboss.org/browse/NETTY-379
         // final Timer timer = new HashedWheelTimer(new NamedThreadFactory("NettyIdleTimer", true));
         bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
+            @Override
             public ChannelPipeline getPipeline() {
                 NettyCodecAdapter adapter = new NettyCodecAdapter(getCodec(), getUrl(), NettyServer.this);
                 ChannelPipeline pipeline = Channels.pipeline();
@@ -104,7 +105,7 @@ public class NettyServer extends AbstractServer implements Server {
         }
         try {
             Collection<com.alibaba.dubbo.remoting.Channel> channels = getChannels();
-            if (channels != null && channels.size() > 0) {
+            if (channels != null && !channels.isEmpty()) {
                 for (com.alibaba.dubbo.remoting.Channel channel : channels) {
                     try {
                         channel.close();
@@ -133,6 +134,7 @@ public class NettyServer extends AbstractServer implements Server {
         }
     }
 
+    @Override
     public Collection<Channel> getChannels() {
         Collection<Channel> chs = new HashSet<Channel>();
         for (Channel channel : this.channels.values()) {
@@ -145,10 +147,12 @@ public class NettyServer extends AbstractServer implements Server {
         return chs;
     }
 
+    @Override
     public Channel getChannel(InetSocketAddress remoteAddress) {
         return channels.get(NetUtils.toAddressString(remoteAddress));
     }
 
+    @Override
     public boolean isBound() {
         return channel.isBound();
     }

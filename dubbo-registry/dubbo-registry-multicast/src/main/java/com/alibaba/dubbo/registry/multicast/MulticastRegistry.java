@@ -49,7 +49,6 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * MulticastRegistry
- *
  */
 public class MulticastRegistry extends FailbackRegistry {
 
@@ -89,6 +88,7 @@ public class MulticastRegistry extends FailbackRegistry {
             mutilcastSocket.setLoopbackMode(false);
             mutilcastSocket.joinGroup(mutilcastAddress);
             Thread thread = new Thread(new Runnable() {
+                @Override
                 public void run() {
                     byte[] buf = new byte[2048];
                     DatagramPacket recv = new DatagramPacket(buf, buf.length);
@@ -118,6 +118,7 @@ public class MulticastRegistry extends FailbackRegistry {
         this.cleanPeriod = url.getParameter(Constants.SESSION_TIMEOUT_KEY, Constants.DEFAULT_SESSION_TIMEOUT);
         if (url.getParameter("clean", true)) {
             this.cleanFuture = cleanExecutor.scheduleWithFixedDelay(new Runnable() {
+                @Override
                 public void run() {
                     try {
                         clean(); // Remove the expired
@@ -211,7 +212,7 @@ public class MulticastRegistry extends FailbackRegistry {
         } else if (msg.startsWith(Constants.SUBSCRIBE)) {
             URL url = URL.valueOf(msg.substring(Constants.SUBSCRIBE.length()).trim());
             Set<URL> urls = getRegistered();
-            if (urls != null && urls.size() > 0) {
+            if (urls != null && !urls.isEmpty()) {
                 for (URL u : urls) {
                     if (UrlUtils.isMatch(url, u)) {
                         String host = remoteAddress != null && remoteAddress.getAddress() != null
@@ -255,14 +256,17 @@ public class MulticastRegistry extends FailbackRegistry {
         }
     }
 
+    @Override
     protected void doRegister(URL url) {
         broadcast(Constants.REGISTER + " " + url.toFullString());
     }
 
+    @Override
     protected void doUnregister(URL url) {
         broadcast(Constants.UNREGISTER + " " + url.toFullString());
     }
 
+    @Override
     protected void doSubscribe(URL url, NotifyListener listener) {
         if (Constants.ANY_VALUE.equals(url.getServiceInterface())) {
             admin = true;
@@ -276,6 +280,7 @@ public class MulticastRegistry extends FailbackRegistry {
         }
     }
 
+    @Override
     protected void doUnsubscribe(URL url, NotifyListener listener) {
         if (!Constants.ANY_VALUE.equals(url.getServiceInterface())
                 && url.getParameter(Constants.REGISTER_KEY, true)) {
@@ -284,6 +289,7 @@ public class MulticastRegistry extends FailbackRegistry {
         broadcast(Constants.UNSUBSCRIBE + " " + url.toFullString());
     }
 
+    @Override
     public boolean isAvailable() {
         try {
             return mutilcastSocket != null;
@@ -292,6 +298,7 @@ public class MulticastRegistry extends FailbackRegistry {
         }
     }
 
+    @Override
     public void destroy() {
         super.destroy();
         try {
@@ -338,6 +345,13 @@ public class MulticastRegistry extends FailbackRegistry {
                 if (urls != null) {
                     urls.remove(url);
                 }
+                if (urls == null || urls.isEmpty()){
+                    if (urls == null){
+                        urls = new ConcurrentHashSet<URL>();
+                    }
+                    URL empty = url.setProtocol(Constants.EMPTY_PROTOCOL);
+                    urls.add(empty);
+                }
                 List<URL> list = toList(urls);
                 for (NotifyListener listener : entry.getValue()) {
                     notify(key, listener, list);
@@ -353,7 +367,7 @@ public class MulticastRegistry extends FailbackRegistry {
 
     private List<URL> toList(Set<URL> urls) {
         List<URL> list = new ArrayList<URL>();
-        if (urls != null && urls.size() > 0) {
+        if (urls != null && !urls.isEmpty()) {
             for (URL url : urls) {
                 list.add(url);
             }
@@ -361,26 +375,31 @@ public class MulticastRegistry extends FailbackRegistry {
         return list;
     }
 
+    @Override
     public void register(URL url) {
         super.register(url);
         registered(url);
     }
 
+    @Override
     public void unregister(URL url) {
         super.unregister(url);
         unregistered(url);
     }
 
+    @Override
     public void subscribe(URL url, NotifyListener listener) {
         super.subscribe(url, listener);
         subscribed(url, listener);
     }
 
+    @Override
     public void unsubscribe(URL url, NotifyListener listener) {
         super.unsubscribe(url, listener);
         received.remove(url);
     }
 
+    @Override
     public List<URL> lookup(URL url) {
         List<URL> urls = new ArrayList<URL>();
         Map<String, List<URL>> notifiedUrls = getNotified().get(url);
@@ -389,13 +408,13 @@ public class MulticastRegistry extends FailbackRegistry {
                 urls.addAll(values);
             }
         }
-        if (urls == null || urls.size() == 0) {
+        if (urls.isEmpty()) {
             List<URL> cacheUrls = getCacheUrls(url);
-            if (cacheUrls != null && cacheUrls.size() > 0) {
+            if (cacheUrls != null && !cacheUrls.isEmpty()) {
                 urls.addAll(cacheUrls);
             }
         }
-        if (urls == null || urls.size() == 0) {
+        if (urls.isEmpty()) {
             for (URL u : getRegistered()) {
                 if (UrlUtils.isMatch(url, u)) {
                     urls.add(u);

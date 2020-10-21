@@ -46,7 +46,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -76,8 +75,6 @@ public abstract class AbstractRegistry implements Registry {
     // Local disk cache file
     private File file;
 
-    private AtomicBoolean destroyed = new AtomicBoolean(false);
-
     public AbstractRegistry(URL url) {
         setUrl(url);
         // Start file save timer
@@ -98,7 +95,7 @@ public abstract class AbstractRegistry implements Registry {
     }
 
     protected static List<URL> filterEmpty(URL url, List<URL> urls) {
-        if (urls == null || urls.size() == 0) {
+        if (urls == null || urls.isEmpty()) {
             List<URL> result = new ArrayList<URL>(1);
             result.add(url.setProtocol(Constants.EMPTY_PROTOCOL));
             return result;
@@ -106,6 +103,7 @@ public abstract class AbstractRegistry implements Registry {
         return urls;
     }
 
+    @Override
     public URL getUrl() {
         return registryUrl;
     }
@@ -233,6 +231,7 @@ public abstract class AbstractRegistry implements Registry {
         return null;
     }
 
+    @Override
     public List<URL> lookup(URL url) {
         List<URL> result = new ArrayList<URL>();
         Map<String, List<URL>> notifiedUrls = getNotified().get(url);
@@ -247,13 +246,14 @@ public abstract class AbstractRegistry implements Registry {
         } else {
             final AtomicReference<List<URL>> reference = new AtomicReference<List<URL>>();
             NotifyListener listener = new NotifyListener() {
+                @Override
                 public void notify(List<URL> urls) {
                     reference.set(urls);
                 }
             };
             subscribe(url, listener); // Subscribe logic guarantees the first notify to return
             List<URL> urls = reference.get();
-            if (urls != null && urls.size() > 0) {
+            if (urls != null && !urls.isEmpty()) {
                 for (URL u : urls) {
                     if (!Constants.EMPTY_PROTOCOL.equals(u.getProtocol())) {
                         result.add(u);
@@ -264,6 +264,7 @@ public abstract class AbstractRegistry implements Registry {
         return result;
     }
 
+    @Override
     public void register(URL url) {
         if (url == null) {
             throw new IllegalArgumentException("register url == null");
@@ -274,6 +275,7 @@ public abstract class AbstractRegistry implements Registry {
         registered.add(url);
     }
 
+    @Override
     public void unregister(URL url) {
         if (url == null) {
             throw new IllegalArgumentException("unregister url == null");
@@ -284,6 +286,7 @@ public abstract class AbstractRegistry implements Registry {
         registered.remove(url);
     }
 
+    @Override
     public void subscribe(URL url, NotifyListener listener) {
         if (url == null) {
             throw new IllegalArgumentException("subscribe url == null");
@@ -302,6 +305,7 @@ public abstract class AbstractRegistry implements Registry {
         listeners.add(listener);
     }
 
+    @Override
     public void unsubscribe(URL url, NotifyListener listener) {
         if (url == null) {
             throw new IllegalArgumentException("unsubscribe url == null");
@@ -374,7 +378,7 @@ public abstract class AbstractRegistry implements Registry {
         if (listener == null) {
             throw new IllegalArgumentException("notify listener == null");
         }
-        if ((urls == null || urls.size() == 0)
+        if ((urls == null || urls.isEmpty())
                 && !Constants.ANY_VALUE.equals(url.getServiceInterface())) {
             logger.warn("Ignore empty notify urls for subscribe url " + url);
             return;
@@ -441,11 +445,8 @@ public abstract class AbstractRegistry implements Registry {
         }
     }
 
+    @Override
     public void destroy() {
-        if (!destroyed.compareAndSet(false, true)) {
-            return;
-        }
-
         if (logger.isInfoEnabled()) {
             logger.info("Destroy registry:" + getUrl());
         }
@@ -482,6 +483,7 @@ public abstract class AbstractRegistry implements Registry {
         }
     }
 
+    @Override
     public String toString() {
         return getUrl().toString();
     }
@@ -493,6 +495,7 @@ public abstract class AbstractRegistry implements Registry {
             this.version = version;
         }
 
+        @Override
         public void run() {
             doSaveProperties(version);
         }

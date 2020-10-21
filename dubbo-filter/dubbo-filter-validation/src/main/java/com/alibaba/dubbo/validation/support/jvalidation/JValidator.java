@@ -233,6 +233,7 @@ public class JValidator implements Validator {
         return memberValue;
     }
 
+    @Override
     public void validate(String methodName, Class<?>[] parameterTypes, Object[] arguments) throws Exception {
         List<Class<?>> groups = new ArrayList<Class<?>>();
         String methodClassName = clazz.getName() + "$" + toUpperMethoName(methodName);
@@ -265,7 +266,7 @@ public class JValidator implements Validator {
             validate(violations, arg, classgroups);
         }
 
-        if (violations.size() > 0) {
+        if (!violations.isEmpty()) {
             logger.error("Failed to validate service: " + clazz.getName() + ", method: " + methodName + ", cause: " + violations);
             throw new ConstraintViolationException("Failed to validate service: " + clazz.getName() + ", method: " + methodName + ", cause: " + violations, violations);
         }

@@ -16,23 +16,15 @@
  */
 package com.alibaba.dubbo.rpc.filter.tps;
 
-import com.alibaba.dubbo.common.URL;
-import com.alibaba.dubbo.rpc.Invocation;
-import com.alibaba.dubbo.rpc.RpcInvocation;
-
 import org.junit.After;
 import org.junit.Test;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StatItemTest {
 
     private StatItem statItem;
-
-    private URL url = URL.valueOf("test://localhost");
-
-    private Invocation invocation = new RpcInvocation();
 
     @After
     public void tearDown() throws Exception {
@@ -43,9 +35,9 @@ public class StatItemTest {
     public void testIsAllowable() throws Exception {
         statItem = new StatItem("test", 5, 1000L);
         long lastResetTime = statItem.getLastResetTime();
-        assertEquals(true, statItem.isAllowable(url, invocation));
+        assertEquals(true, statItem.isAllowable());
         Thread.sleep(1100L);
-        assertEquals(true, statItem.isAllowable(url, invocation));
+        assertEquals(true, statItem.isAllowable());
         assertTrue(lastResetTime != statItem.getLastResetTime());
         assertEquals(4, statItem.getToken());
     }

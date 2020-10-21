@@ -16,9 +16,6 @@
  */
 package com.alibaba.dubbo.rpc.filter.tps;
 
-import com.alibaba.dubbo.common.URL;
-import com.alibaba.dubbo.rpc.Invocation;
-
 import java.util.concurrent.atomic.AtomicInteger;
 
 class StatItem {
@@ -41,7 +38,7 @@ class StatItem {
         this.token = new AtomicInteger(rate);
     }
 
-    public boolean isAllowable(URL url, Invocation invocation) {
+    public boolean isAllowable() {
         long now = System.currentTimeMillis();
         if (now > lastResetTime + interval) {
             token.set(rate);
@@ -66,6 +63,7 @@ class StatItem {
         return token.get();
     }
 
+    @Override
     public String toString() {
         return new StringBuilder(32).append("StatItem ")
                 .append("[name=").append(name).append(", ")

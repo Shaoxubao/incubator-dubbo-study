@@ -31,9 +31,10 @@ import java.util.Collection;
 @Activate
 public class RegistryStatusChecker implements StatusChecker {
 
+    @Override
     public Status check() {
         Collection<Registry> regsitries = AbstractRegistryFactory.getRegistries();
-        if (regsitries == null || regsitries.size() == 0) {
+        if (regsitries == null || regsitries.isEmpty()) {
             return new Status(Status.Level.UNKNOWN);
         }
         Status.Level level = Status.Level.OK;

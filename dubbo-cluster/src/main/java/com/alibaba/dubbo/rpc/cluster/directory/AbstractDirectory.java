@@ -66,13 +66,14 @@ public abstract class AbstractDirectory<T> implements Directory<T> {
         setRouters(routers);
     }
 
+    @Override
     public List<Invoker<T>> list(Invocation invocation) throws RpcException {
         if (destroyed) {
             throw new RpcException("Directory already destroyed .url: " + getUrl());
         }
         List<Invoker<T>> invokers = doList(invocation);
         List<Router> localRouters = this.routers; // local reference
-        if (localRouters != null && localRouters.size() > 0) {
+        if (localRouters != null && !localRouters.isEmpty()) {
             for (Router router : localRouters) {
                 try {
                     if (router.getUrl() == null || router.getUrl().getParameter(Constants.RUNTIME_KEY, false)) {
@@ -86,6 +87,7 @@ public abstract class AbstractDirectory<T> implements Directory<T> {
         return invokers;
     }
 
+    @Override
     public URL getUrl() {
         return url;
     }
@@ -121,6 +123,7 @@ public abstract class AbstractDirectory<T> implements Directory<T> {
         return destroyed;
     }
 
+    @Override
     public void destroy() {
         destroyed = true;
     }

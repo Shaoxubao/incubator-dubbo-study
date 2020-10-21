@@ -21,6 +21,8 @@ import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.common.logger.Logger;
 import com.alibaba.dubbo.common.logger.LoggerFactory;
+import com.alibaba.dubbo.common.utils.ConfigUtils;
+import com.alibaba.dubbo.common.utils.NamedThreadFactory;
 import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.dubbo.common.utils.UrlUtils;
 import com.alibaba.dubbo.registry.NotifyListener;
@@ -42,6 +44,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static com.alibaba.dubbo.common.Constants.ACCEPT_FOREIGN_IP;
+import static com.alibaba.dubbo.common.Constants.QOS_ENABLE;
+import static com.alibaba.dubbo.common.Constants.QOS_PORT;
 
 /**
  * RegistryProtocol
@@ -103,6 +111,7 @@ public class RegistryProtocol implements Protocol {
         this.proxyFactory = proxyFactory;
     }
 
+    @Override
     public int getDefaultPort() {
         return 9090;
     }
@@ -116,6 +125,7 @@ public class RegistryProtocol implements Protocol {
         registry.register(registedProviderUrl);
     }
 
+    @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
         //export invoker
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker);
@@ -143,30 +153,7 @@ public class RegistryProtocol implements Protocol {
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
         registry.subscribe(overrideSubscribeUrl, overrideSubscribeListener);
         //Ensure that a new exporter instance is returned every time export
-        return new Exporter<T>() {
-            public Invoker<T> getInvoker() {
-                return exporter.getInvoker();
-            }
-
-            public void unexport() {
-                try {
-                    exporter.unexport();
-                } catch (Throwable t) {
-                    logger.warn(t.getMessage(), t);
-                }
-                try {
-                    registry.unregister(registedProviderUrl);
-                } catch (Throwable t) {
-                    logger.warn(t.getMessage(), t);
-                }
-                try {
-                    overrideListeners.remove(overrideSubscribeUrl);
-                    registry.unsubscribe(overrideSubscribeUrl, overrideSubscribeListener);
-                } catch (Throwable t) {
-                    logger.warn(t.getMessage(), t);
-                }
-            }
-        };
+        return new DestroyableExporter<T>(exporter, originInvoker, overrideSubscribeUrl, registedProviderUrl);
     }
 
     @SuppressWarnings("unchecked")
@@ -237,7 +224,10 @@ public class RegistryProtocol implements Protocol {
         final URL registedProviderUrl = providerUrl.removeParameters(getFilteredKeys(providerUrl))
                 .removeParameter(Constants.MONITOR_KEY)
                 .removeParameter(Constants.BIND_IP_KEY)
-                .removeParameter(Constants.BIND_PORT_KEY);
+                .removeParameter(Constants.BIND_PORT_KEY)
+                .removeParameter(QOS_ENABLE)
+                .removeParameter(QOS_PORT)
+                .removeParameter(ACCEPT_FOREIGN_IP);
         return registedProviderUrl;
     }
 
@@ -275,6 +265,7 @@ public class RegistryProtocol implements Protocol {
         return key;
     }
 
+    @Override
     @SuppressWarnings("unchecked")
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
         url = url.setProtocol(url.getParameter(Constants.REGISTRY_KEY, Constants.DEFAULT_REGISTRY)).removeParameter(Constants.REGISTRY_KEY);
@@ -317,10 +308,11 @@ public class RegistryProtocol implements Protocol {
                         + "," + Constants.ROUTERS_CATEGORY));
 
         Invoker invoker = cluster.join(directory);
-        ProviderConsumerRegTable.registerConsuemr(invoker, url, subscribeUrl, directory);
+        ProviderConsumerRegTable.registerConsumer(invoker, url, subscribeUrl, directory);
         return invoker;
     }
 
+    @Override
     public void destroy() {
         List<Exporter<?>> exporters = new ArrayList<Exporter<?>>(bounds.values());
         for (Exporter<?> exporter : exporters) {
@@ -369,6 +361,7 @@ public class RegistryProtocol implements Protocol {
         /**
          * @param urls The list of registered information , is always not empty, The meaning is the same as the return value of {@link com.alibaba.dubbo.registry.RegistryService#lookup(URL)}.
          */
+        @Override
         public synchronized void notify(List<URL> urls) {
             logger.debug("original override urls: " + urls);
             List<URL> matchedUrls = getMatchedUrls(urls, subscribeUrl);
@@ -450,6 +443,7 @@ public class RegistryProtocol implements Protocol {
             return originInvoker;
         }
 
+        @Override
         public Invoker<T> getInvoker() {
             return exporter.getInvoker();
         }
@@ -458,10 +452,65 @@ public class RegistryProtocol implements Protocol {
             this.exporter = exporter;
         }
 
+        @Override
         public void unexport() {
             String key = getCacheKey(this.originInvoker);
             bounds.remove(key);
             exporter.unexport();
+        }
+    }
+
+    static private class DestroyableExporter<T> implements Exporter<T> {
+
+        public static final ExecutorService executor = Executors.newSingleThreadExecutor(new NamedThreadFactory("Exporter-Unexport", true));
+
+        private Exporter<T> exporter;
+        private Invoker<T> originInvoker;
+        private URL subscribeUrl;
+        private URL registerUrl;
+
+        public DestroyableExporter(Exporter<T> exporter, Invoker<T> originInvoker, URL subscribeUrl, URL registerUrl) {
+            this.exporter = exporter;
+            this.originInvoker = originInvoker;
+            this.subscribeUrl = subscribeUrl;
+            this.registerUrl = registerUrl;
+        }
+
+        @Override
+        public Invoker<T> getInvoker() {
+            return exporter.getInvoker();
+        }
+
+        @Override
+        public void unexport() {
+            Registry registry = RegistryProtocol.INSTANCE.getRegistry(originInvoker);
+            try {
+                registry.unregister(registerUrl);
+            } catch (Throwable t) {
+                logger.warn(t.getMessage(), t);
+            }
+            try {
+                NotifyListener listener = RegistryProtocol.INSTANCE.overrideListeners.remove(subscribeUrl);
+                registry.unsubscribe(subscribeUrl, listener);
+            } catch (Throwable t) {
+                logger.warn(t.getMessage(), t);
+            }
+
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        int timeout = ConfigUtils.getServerShutdownTimeout();
+                        if (timeout > 0) {
+                            logger.info("Waiting " + timeout + "ms for registry to notify all consumers before unexport. Usually, this is called when you use dubbo API");
+                            Thread.sleep(timeout);
+                        }
+                        exporter.unexport();
+                    } catch (Throwable t) {
+                        logger.warn(t.getMessage(), t);
+                    }
+                }
+            });
         }
     }
 }
